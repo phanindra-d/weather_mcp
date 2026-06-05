@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:openweathermap.org)",
+      "Bash(uv --version)",
+      "Bash(uv run *)",
+      "Bash(.venv/Scripts/pip install *)",
+      "Bash(.venv/Scripts/python.exe -m pip install fastmcp requests python-dotenv)",
+      "Bash(venv/Scripts/python.exe -m pip install fastmcp requests python-dotenv)",
+      "Bash(timeout 3 venv/Scripts/python.exe main.py)",
+      "Bash(python -m json.tool \"C:\\\\Users\\\\PhanindraDharmavarap\\\\AppData\\\\Roaming\\\\Claude\\\\claude_desktop_config.json\")",
+      "Bash(C:\\\\Users\\\\PhanindraDharmavarap\\\\Downloads\\\\weather_mcp\\\\weather_mcp\\\\venv\\\\Scripts\\\\python.exe *)",
+      "Bash(\"venv/Scripts/python.exe\" main.py)",
+      "Bash(curl -s \"https://api.openweathermap.org/data/2.5/weather?q=Mawsynram&appid=4a5742edd9e8d05c61a2af958953f11e&units=metric\")",
+      "Bash(python -m json.tool)",
+      "Bash(curl -s \"https://api.openweathermap.org/data/2.5/weather?q=London&appid=4a5742edd9e8d05c61a2af958953f11e&units=metric\")",
+      "Bash(git add *)"
+    ]
+  }
+}

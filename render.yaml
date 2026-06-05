@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: weather-mcp
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py sse
+    envVars:
+      - key: OPENWEATHER_API
+        sync: false
+      - key: BASE_URL
+        value: https://api.openweathermap.org/data/2.5/weather
