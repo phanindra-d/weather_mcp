@@ -15,7 +15,10 @@
       "Bash(curl -s \"https://api.openweathermap.org/data/2.5/weather?q=Mawsynram&appid=4a5742edd9e8d05c61a2af958953f11e&units=metric\")",
       "Bash(python -m json.tool)",
       "Bash(curl -s \"https://api.openweathermap.org/data/2.5/weather?q=London&appid=4a5742edd9e8d05c61a2af958953f11e&units=metric\")",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(venv/Scripts/python.exe main.py sse)",
+      "Bash(curl -s http://localhost:8080/)"
     ]
   }
 }

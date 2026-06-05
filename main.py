@@ -5,15 +5,26 @@ import dotenv, os, requests
 mcp=FastMCP(name='weather_mcp')
 dotenv.load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API')
-BASE_URL = os.getenv('BASE_URL')
+BASE_URL = os.getenv('BASE_URL', 'https://api.openweathermap.org/data/2.5/weather')
 
 
-@mcp.tool
+@mcp.tool()
 def weather_tool(
     city: Optional[str] = None,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None
     ) -> dict:
+    """
+    Get current weather data for a location.
+
+    Args:
+        city: City name (e.g., "London", "New York")
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+
+    Returns:
+        Weather data including temperature, humidity, rain, wind, and conditions
+    """
     try:
         if city:
             params = {'q': city}
@@ -58,4 +69,11 @@ if __name__ == "__main__":
     import sys
     # Support both local (stdio) and remote (SSE) transports
     transport = sys.argv[1] if len(sys.argv) > 1 else "stdio"
-    mcp.run(transport=transport)    
+
+    # Get port from environment or default
+    port = int(os.getenv('PORT', 8080))
+
+    if transport == "sse":
+        mcp.run(transport=transport, port=port)
+    else:
+        mcp.run(transport=transport)    
