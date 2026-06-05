@@ -74,6 +74,7 @@ if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
 
     if transport == "sse":
-        mcp.run(transport=transport, port=port, host="0.0.0.0")
+        # Let FastMCP handle host binding automatically
+        mcp.run(transport=transport, port=port)
     else:
         mcp.run(transport=transport)    
