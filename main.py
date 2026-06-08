@@ -1,4 +1,5 @@
 from fastmcp import FastMCP
+from fastmcp.server.auth.providers.jwt import StaticTokenVerifier
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse
 from typing import Optional
@@ -8,8 +9,25 @@ dotenv.load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API')
 BASE_URL = os.getenv('BASE_URL', 'https://api.openweathermap.org/data/2.5/weather')
 
+# Authentication (optional - disabled if MCP_API_TOKEN not set)
+auth = None
+mcp_token = os.getenv('MCP_API_TOKEN')
+
+if mcp_token:
+    auth = StaticTokenVerifier(
+        tokens={
+            mcp_token: {
+                "client_id": "weather-client",
+                "scopes": ["weather:read"]
+            }
+        }
+    )
+    print(f"✓ MCP authentication enabled")
+else:
+    print("⚠ MCP authentication disabled (MCP_API_TOKEN not set)")
+
 # MCP Server
-mcp = FastMCP(name='weather_mcp')
+mcp = FastMCP(name='weather_mcp', auth=auth)
 
 def get_weather_data(city=None, latitude=None, longitude=None):
     """Fetch weather from OpenWeatherMap API"""
@@ -100,7 +118,6 @@ async def weather_endpoint(request: Request) -> JSONResponse:
         lat = request.query_params.get("lat")
         lon = request.query_params.get("lon")
 
-        # Convert lat/lon to float if provided
         if lat:
             lat = float(lat)
         if lon:
@@ -128,7 +145,4 @@ async def weather_endpoint(request: Request) -> JSONResponse:
 
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
-    # Run MCP server with HTTP transport
-    # This creates /mcp endpoint for remote clients
-    # Custom routes provide REST API at /api/weather
     mcp.run(transport="http", host="0.0.0.0", port=port)

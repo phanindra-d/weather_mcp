@@ -10,3 +10,5 @@ services:
         sync: false
       - key: BASE_URL
         value: https://api.openweathermap.org/data/2.5/weather
+      - key: MCP_API_TOKEN
+        sync: false
