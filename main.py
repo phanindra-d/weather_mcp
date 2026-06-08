@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse, PlainTextResponse
 from typing import Optional
-import dotenv, os, requests, uvicorn
+import dotenv, os, requests
 
 dotenv.load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API')
@@ -72,48 +72,63 @@ def weather_tool(
     except Exception as e:
         return {'Error': str(e)}
 
-# FastAPI app - for REST API
-app = FastAPI(title="Weather MCP Server", version="1.0.0")
+# Custom HTTP routes - for REST API compatibility
+# These work alongside /mcp endpoint
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/")
-def root():
-    return {
+@mcp.custom_route("/", methods=["GET"])
+async def root(request: Request) -> JSONResponse:
+    """Root endpoint - server info"""
+    return JSONResponse({
         "service": "Weather MCP Server",
         "version": "1.0.0",
-        "mcp_tool": "weather_tool",
-        "rest_endpoint": "/api/weather?city=London"
-    }
+        "mcp_endpoint": "/mcp",
+        "rest_endpoint": "/api/weather?city=London",
+        "health_check": "/health"
+    })
 
-@app.get("/health")
-def health():
-    return {"status": "healthy"}
+@mcp.custom_route("/health", methods=["GET"])
+async def health(request: Request) -> JSONResponse:
+    """Health check endpoint"""
+    return JSONResponse({"status": "healthy"})
 
-# REST endpoint - for chatbots
-@app.get("/api/weather")
-def weather_endpoint(
-    city: Optional[str] = None,
-    lat: Optional[float] = None,
-    lon: Optional[float] = None
-):
-    """Get current weather data via REST API"""
+@mcp.custom_route("/api/weather", methods=["GET"])
+async def weather_endpoint(request: Request) -> JSONResponse:
+    """REST API endpoint for weather data"""
     try:
-        return get_weather_data(city, lat, lon)
+        # Get query parameters
+        city = request.query_params.get("city")
+        lat = request.query_params.get("lat")
+        lon = request.query_params.get("lon")
+
+        # Convert lat/lon to float if provided
+        if lat:
+            lat = float(lat)
+        if lon:
+            lon = float(lon)
+
+        # Call core weather function
+        data = get_weather_data(city, lat, lon)
+        return JSONResponse(data)
+
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=400
+        )
     except requests.exceptions.HTTPError:
-        raise HTTPException(status_code=404, detail="Location not found")
+        return JSONResponse(
+            {"error": "Location not found"},
+            status_code=404
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            {"error": str(e)},
+            status_code=500
+        )
 
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
-    # Run FastAPI server (MCP tool available via stdio locally)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    # Run MCP server with HTTP transport
+    # This creates /mcp endpoint for remote clients
+    # Custom routes provide REST API at /api/weather
+    mcp.run(transport="http", host="0.0.0.0", port=port)
