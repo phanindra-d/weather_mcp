@@ -122,9 +122,12 @@ def root():
         }
     }
 
-# Mount MCP SSE endpoint
-mcp_app = mcp.create_sse_app()
-app.mount("/sse", mcp_app)
+# Mount MCP SSE endpoint at /sse
+# FastMCP provides ASGI app via mcp.sse_app()
+from fastmcp.server.sse import create_sse_handler
+
+sse_handler = create_sse_handler(mcp)
+app.add_api_route("/sse", sse_handler, methods=["GET", "POST"])
 
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
