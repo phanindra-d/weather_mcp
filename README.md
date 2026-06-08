@@ -1,59 +1,93 @@
 # Weather MCP Server
 
-Production-ready MCP server for weather data using OpenWeatherMap API.
+Production-ready weather server with both MCP and REST API support.
 
 ## Features
-- City name or lat/lon input
-- Returns temperature, humidity, rain status, wind speed, conditions
-- MCP protocol compatible (works with Claude Desktop, LiteLLM, any MCP client)
-- SSE transport for remote deployment
+- **MCP Protocol**: For AI assistants (Claude Desktop, Cursor, etc.)
+- **REST API**: For chatbots and web apps
+- OpenWeatherMap API integration
+- Returns: temperature, humidity, rain, wind, conditions
 
-## Local Usage
+## Endpoints
+
+### MCP Endpoint (for AI assistants)
+```
+https://your-server.com/sse
+```
+
+### REST API (for chatbots)
+```
+GET https://your-server.com/api/weather?city=London
+GET https://your-server.com/api/weather?lat=51.5074&lon=-0.1278
+```
+
+**Response:**
+```json
+{
+  "temperature": 15.2,
+  "humidity": 72,
+  "rain_mm_per_hour": 0,
+  "is_raining": false,
+  "wind_speed": 3.5,
+  "weather_condition": "Clouds",
+  "weather_description": "overcast clouds",
+  "clouds_percent": 90,
+  "location": "London",
+  "country": "GB"
+}
+```
+
+## Deployment
+
+### Render (Free)
+1. Fork/clone this repo
+2. Go to [render.com](https://render.com)
+3. New Web Service → Connect GitHub repo
+4. Add environment variable:
+   - `OPENWEATHER_API`: your API key
+5. Deploy (auto-detects `render.yaml`)
+
+### Local Development
 ```bash
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 python main.py
 ```
 
-## Remote Deployment
+Server runs on `http://localhost:8080`
 
-### Render (Free Tier)
-1. Push code to GitHub
-2. Go to [render.com](https://render.com)
-3. Create new Web Service
-4. Connect your GitHub repo
-5. Set environment variable: `OPENWEATHER_API=your_api_key`
-6. Deploy (uses render.yaml config)
+## Integration
 
-Your MCP server will be at: `https://weather-mcp-xxxx.onrender.com`
-
-## Integration with LiteLLM
-
+### With LiteLLM/LangChain Chatbot
 ```python
-from litellm import completion
+import requests
 
-response = completion(
-    model="gpt-4",
-    messages=[{"role": "user", "content": "What's weather in London?"}],
-    tools=[{
-        "type": "mcp",
-        "server_url": "https://your-server.onrender.com"
-    }]
-)
+def get_weather(city: str):
+    response = requests.get(
+        "https://your-server.com/api/weather",
+        params={"city": city}
+    )
+    return response.json()
+
+# Use in your chatbot
+weather = get_weather("London")
 ```
 
-## Integration with Claude Desktop
-
+### With Claude Desktop
 Add to `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "weather-remote": {
+    "weather": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/client", "https://your-server.onrender.com"]
+      "args": ["-y", "@modelcontextprotocol/client", "https://your-server.com/sse"]
     }
   }
 }
 ```
 
 ## Environment Variables
-- `OPENWEATHER_API`: Your OpenWeatherMap API key
-- `BASE_URL`: OpenWeather API endpoint (default: https://api.openweathermap.org/data/2.5/weather)
+- `OPENWEATHER_API`: Your OpenWeatherMap API key (required)
+- `BASE_URL`: API endpoint (default: https://api.openweathermap.org/data/2.5/weather)
+- `PORT`: Server port (default: 8080)
