@@ -1,6 +1,5 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastmcp import FastMCP
 from typing import Optional
 import dotenv, os, requests, uvicorn
 
@@ -8,11 +7,19 @@ dotenv.load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API')
 BASE_URL = os.getenv('BASE_URL', 'https://api.openweathermap.org/data/2.5/weather')
 
-# Initialize MCP
-mcp = FastMCP(name='weather_mcp')
+# FastAPI app for REST API
+app = FastAPI(title="Weather API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_weather_data(city=None, latitude=None, longitude=None):
-    """Core weather logic - shared by MCP and REST"""
+    """Fetch weather from OpenWeatherMap API"""
     if city:
         params = {'q': city}
     elif latitude is not None and longitude is not None:
@@ -49,48 +56,31 @@ def get_weather_data(city=None, latitude=None, longitude=None):
         "country": data.get('sys', {}).get('country', 'N/A')
     }
 
-# MCP Tool
-@mcp.tool()
-def weather_tool(
-    city: Optional[str] = None,
-    latitude: Optional[float] = None,
-    longitude: Optional[float] = None
-) -> dict:
-    """
-    Get current weather data for a location.
+@app.get("/")
+def root():
+    return {
+        "service": "Weather API",
+        "version": "1.0.0",
+        "endpoint": "/api/weather?city=London"
+    }
 
-    Args:
-        city: City name (e.g., "London", "New York")
-        latitude: Latitude coordinate
-        longitude: Longitude coordinate
+@app.get("/health")
+def health():
+    return {"status": "healthy"}
 
-    Returns:
-        Weather data including temperature, humidity, rain, wind, and conditions
-    """
-    try:
-        return get_weather_data(city, latitude, longitude)
-    except Exception as e:
-        return {'Error': str(e)}
-
-# FastAPI app
-app = FastAPI(title="Weather MCP Server", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# REST endpoint for chatbots
 @app.get("/api/weather")
-def weather_rest(
+def weather_endpoint(
     city: Optional[str] = None,
     lat: Optional[float] = None,
     lon: Optional[float] = None
 ):
-    """REST API endpoint for chatbot integration"""
+    """
+    Get current weather data
+
+    Query params:
+    - city: City name (e.g., "London")
+    - lat, lon: Coordinates
+    """
     try:
         return get_weather_data(city, lat, lon)
     except ValueError as e:
@@ -99,35 +89,6 @@ def weather_rest(
         raise HTTPException(status_code=404, detail="Location not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/health")
-def health():
-    return {
-        "status": "healthy",
-        "endpoints": {
-            "mcp": "/sse",
-            "rest": "/api/weather"
-        }
-    }
-
-@app.get("/")
-def root():
-    return {
-        "service": "Weather MCP Server",
-        "version": "1.0.0",
-        "endpoints": {
-            "mcp": "/sse (for AI assistants)",
-            "rest": "/api/weather?city=London (for chatbots)",
-            "health": "/health"
-        }
-    }
-
-# Mount MCP SSE endpoint at /sse
-# FastMCP provides ASGI app via mcp.sse_app()
-from fastmcp.server.sse import create_sse_handler
-
-sse_handler = create_sse_handler(mcp)
-app.add_api_route("/sse", sse_handler, methods=["GET", "POST"])
 
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
