@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastmcp import FastMCP
 from typing import Optional
 import dotenv, os, requests, uvicorn
 
@@ -7,16 +8,8 @@ dotenv.load_dotenv()
 API_KEY = os.getenv('OPENWEATHER_API')
 BASE_URL = os.getenv('BASE_URL', 'https://api.openweathermap.org/data/2.5/weather')
 
-# FastAPI app for REST API
-app = FastAPI(title="Weather API", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# MCP Server
+mcp = FastMCP(name='weather_mcp')
 
 def get_weather_data(city=None, latitude=None, longitude=None):
     """Fetch weather from OpenWeatherMap API"""
@@ -56,31 +49,61 @@ def get_weather_data(city=None, latitude=None, longitude=None):
         "country": data.get('sys', {}).get('country', 'N/A')
     }
 
+# MCP Tool - for AI assistants
+@mcp.tool()
+def weather_tool(
+    city: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None
+) -> dict:
+    """
+    Get current weather data for a location.
+
+    Args:
+        city: City name (e.g., "London", "New York")
+        latitude: Latitude coordinate
+        longitude: Longitude coordinate
+
+    Returns:
+        Weather data including temperature, humidity, rain, wind, and conditions
+    """
+    try:
+        return get_weather_data(city, latitude, longitude)
+    except Exception as e:
+        return {'Error': str(e)}
+
+# FastAPI app - for REST API
+app = FastAPI(title="Weather MCP Server", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 def root():
     return {
-        "service": "Weather API",
+        "service": "Weather MCP Server",
         "version": "1.0.0",
-        "endpoint": "/api/weather?city=London"
+        "mcp_tool": "weather_tool",
+        "rest_endpoint": "/api/weather?city=London"
     }
 
 @app.get("/health")
 def health():
     return {"status": "healthy"}
 
+# REST endpoint - for chatbots
 @app.get("/api/weather")
 def weather_endpoint(
     city: Optional[str] = None,
     lat: Optional[float] = None,
     lon: Optional[float] = None
 ):
-    """
-    Get current weather data
-
-    Query params:
-    - city: City name (e.g., "London")
-    - lat, lon: Coordinates
-    """
+    """Get current weather data via REST API"""
     try:
         return get_weather_data(city, lat, lon)
     except ValueError as e:
@@ -92,4 +115,5 @@ def weather_endpoint(
 
 if __name__ == "__main__":
     port = int(os.getenv('PORT', 8080))
+    # Run FastAPI server (MCP tool available via stdio locally)
     uvicorn.run(app, host="0.0.0.0", port=port)
